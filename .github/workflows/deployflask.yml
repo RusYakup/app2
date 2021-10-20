@@ -91,7 +91,7 @@ jobs:
       run: |
         bandit -c bandit.yml -s B104 -r .
   
-deploy:
+  deploy:
        needs: bandit_test
        name : Setup, Build, Publish, and Deploy
        runs-on: ubuntu-latest
