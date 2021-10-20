@@ -90,57 +90,62 @@ jobs:
     - name: analyze source code with bandit
       run: |
         bandit -c bandit.yml -s B104 -r .
+
+    jobs:
+     name: Setup, Build, Publish, and Deploy 
   
-Setup, Build, Publish, and Deploy
 
-       runs-on: ubuntu-latest
-        environment: production
+      runs-on:ubuntu-latest
+      environment:production
 
-        steps:
+     steps:
         - name: Checkout
           uses: actions/checkout@v2
 
     # Setup gcloud CLI
                   
-    with:
+          with:
            service_account_key: ${{ secrets.GKE_SA_KEY }}
            project_id         : ${{ secrets.GKE_PROJECT }}
 
     # Configure Docker to use the gcloud command-line tool as a credential
     # helper for authentication
-    -run : |
+          -run : |
            gcloud --quiet auth configure-docker
 
     # Get the GKE credentials so we can deploy to the cluster
+    name: gke
     uses: google-github-actions/get-gke-credentials@v0.2.1
-  with:
-           cluster_name: ${{ env.GKE_CLUSTER }}
-           location.   : ${{ env.GKE_ZONE }}
-           credentials : ${{ secrets.GKE_SA_KEY }}
+    with:
+       cluster_name.   :${{ env.GKE_CLUSTER }}
+           location.   :${{ env.GKE_ZONE }}
+           credentials :${{ secrets.GKE_SA_KEY }}
 
     # Build the Docker image
-        - name: Build
-         run: |-
-          docker build \
-          --tag "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA" \
-          --build-arg GITHUB_SHA="$GITHUB_SHA" \
-          --build-arg GITHUB_REF="$GITHUB_REF" \
-          .
+                                                                                                                                                                                                                                                  name: Build
+           run: |-
+            docker build \
+            --tag "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA" \
+            --build-arg GITHUB_SHA="$GITHUB_SHA" \
+            --build-arg GITHUB_REF="$GITHUB_REF" \
+            
 
     # Push the Docker image to Google Container Registry
-       - name: Publish
-         run: |-
-          docker push "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA"
+           jobs:
+            my_job:     
+              - name: Publih
+                run: |-
+                 docker push "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA"
 # Set up kustomize
-       - name: Set up Kustomize
-         run: |-
-          curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64
-          chmod u+x ./kustomize
+              - name: Set up Kustomize
+                run: |-
+                 curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64
+                 chmod u+x ./kustomize
 
     # Deploy the Docker image to the GKE cluster
-       - name: Deploy
-         run: |-
-          ./kustomize edit set image gcr.io/PROJECT_ID/IMAGE:TAG=gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA
-          ./kustomize build . | kubectl apply -f -
-          kubectl rollout status deployment/$DEPLOYMENT_NAME
-          kubectl get services -o wide
+              - name: Deploy
+                run: |-
+                 ./kustomize edit set image gcr.io/PROJECT_ID/IMAGE:TAG=gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA
+                 ./kustomize build . | kubectl apply -f -
+                 kubectl rollout status deployment/$DEPLOYMENT_NAME
+                 kubectl get services -o wide
