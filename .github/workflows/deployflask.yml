@@ -13,8 +13,8 @@
 name: CI/CD
 env:
        PROJECT_ID     : ${{ secrets.GKE_PROJECT }}
-       GKE_CLUSTER.   : autopilot-cluster-1    # TODO: update to cluster name
-       GKE_ZONE.      : us-central1   # TODO: update to cluster zone
+       GKE_CLUSTER    : autopilot-cluster-1    # TODO: update to cluster name
+       GKE_ZONE       : us-central1   # TODO: update to cluster zone
        DEPLOYMENT_NAME: exam-devops # TODO: update to deployment name
        IMAGE          : static-site
 # Controls when the workflow will run
@@ -31,7 +31,7 @@ on:
 jobs:
 
   flake8-lint:
-    runs-on. : ubuntu-latest
+    runs-on  : ubuntu-latest
     name     : Lint
     steps:
       - name : Check out source repository
@@ -45,7 +45,7 @@ jobs:
         
   pytest:
     needs    : [flake8-lint]
-    runs-on. : ubuntu-latest
+    runs-on  : ubuntu-latest
 
     steps:
     - uses   : actions/checkout@v2
