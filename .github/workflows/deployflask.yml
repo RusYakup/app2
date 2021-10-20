@@ -91,19 +91,19 @@ jobs:
       run: |
         bandit -c bandit.yml -s B104 -r .
   
-  deploy:
-       needs: bandit_test
-       name : Setup, Build, Publish, and Deploy
-       runs-on: ubuntu-latest
-       environment: production
+  
+   
+        name : Setup, Build, Publish, and Deploy
+        runs-on: ubuntu-latest
+        environment: production
 
-       steps:
-       - name: Checkout
-         uses: actions/checkout@v2
+        steps:
+        - name: Checkout
+          uses: actions/checkout@v2
 
     # Setup gcloud CLI
-       - uses: google-github-actions/setup-gcloud@v0.2.0
-         with:
+  uses: google-github-actions/setup-gcloud@v0.2.0
+            with:
            service_account_key: ${{ secrets.GKE_SA_KEY }}
            project_id         : ${{ secrets.GKE_PROJECT }}
 
