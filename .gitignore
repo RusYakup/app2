@@ -1,2 +1,8 @@
 .idea
 .DS_Store
+.idea/.gitignore
+.idea/app2.iml
+.idea/misc.xml
+.idea/modules.xml
+.idea/runConfigurations.xml
+.idea/vcs.xml
