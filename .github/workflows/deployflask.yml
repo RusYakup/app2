@@ -3,7 +3,7 @@ name: CI/CD
 env:
        PROJECT_ID     : ${{ secrets.GKE_PROJECT }}
        GCP_PROJECT: My Project 48180
-       GCP_SERVICE: app-go-service2
+       GCP_SERVICE: autopilot-cluster-1
        GCP_REGION: us-central1
 # Controls when the workflow will run
 on:
@@ -81,42 +81,54 @@ jobs:
         
 #######
 
-  deploy:
-    name: Deploy
-    needs: bandit_test
-    runs-on: ubuntu-latest
-    environment: production
+  push-deploy:
+    needs    : bandit_test
+    name     : Deploy
+    runs-on  : ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v2
 
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@master
-        with:
-          project_id: ${{ secrets.GCP_PROJECT }}
-          service_account_key: ${{ GKE_SA_KEY }}
-          export_default_credentials: true
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id    : ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-region           : us-east-1
+        
+    - name: Login to Amazon ECR
+      id  : login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+      
+    - name: Build, tag, and push image to Amazon ECR
+      id  : build-image
+      env:
+        ECR_REGISTRY  : ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: ${{ secrets.REPO_NAME }}
+        IMAGE_TAG     : ${{ github.sha }}
+        L: "latest"
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:$L .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY --all-tags
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+    - name: Download task definition
+      run: |
+        aws ecs describe-task-definition --task-definition first-run-task-definition --query taskDefinition > task-definition.json
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id  : task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        container-name : exam-devops-container
+        image: ${{ steps.build-image.outputs.image }}
 
-      - name: Authorize Docker push
-        run: gcloud auth configure-docker
-
-      - name: Build and Push Container
-        run: |-
-          docker build -t gcr.io/${{ env.GCP_PROJECT }}/${{ env.GCP_SERVICE }}:latest .
-          docker push gcr.io/${{ env.GCP_PROJECT }}/${{ env.GCP_SERVICE }}:latest
-      - name: Deploy to Cloud Run
-        id: deploy
-        uses: google-github-actions/deploy-cloudrun@v0.4.0
-        with:
-          service: ${{ env.GCP_SERVICE }}
-          image: gcr.io/${{ env.GCP_PROJECT }}/${{ env.GCP_SERVICE }}:latest
-          region: ${{ env.GCP_REGION }}
-
-      - name: Show Output
-        run: echo ${{ steps.deploy.outputs.url }}
-
-      - name: Cleanup untagged images
-        run: gcloud container images list-tags gcr.io/${{ env.GCP_PROJECT }}/${{ env.GCP_SERVICE }} --filter='-tags:*' --format="get(digest)" --limit=10 > tags && while read p; do gcloud container images delete "gcr.io/${{ env.GCP_PROJECT }}/${{ env.GCP_SERVICE }}@$p" --quiet; done < tags
-
-    
+    - name: Deploy Amazon ECS task definition
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        service: exam-devops-container-service
+        cluster: exam-devops-cluster
+        wait-for-service-stability: true
 
  
