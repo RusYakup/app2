@@ -1,10 +1,6 @@
  
 name: CI/CD
-env:
-       PROJECT_ID     : ${{ secrets.GKE_PROJECT }}
-       GCP_PROJECT: My Project 48180
-       GCP_SERVICE: autopilot-cluster-1
-       GCP_REGION: us-central1
+
 # Controls when the workflow will run
 on:
   push:
@@ -114,21 +110,21 @@ jobs:
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
     - name: Download task definition
       run: |
-        aws ecs describe-task-definition --task-definition first-run-task-definition --query taskDefinition > task-definition.json
+        aws ecs describe-task-definition --task-definition first-run-task-definition1 --query taskDefinition > task-definition.json
     - name: Fill in the new image ID in the Amazon ECS task definition
       id  : task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: task-definition.json
-        container-name : exam-devops-container
+        container-name : exam-devops-container1
         image: ${{ steps.build-image.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: exam-devops-container-service
-        cluster: exam-devops-cluster
+        service: exam-devops-container1-service
+        cluster: exam-devops-cluster1
         wait-for-service-stability: true
 
  
